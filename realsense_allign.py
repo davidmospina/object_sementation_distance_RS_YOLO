@@ -5,10 +5,10 @@ import random
 import torch
 from ultralytics import YOLO
 
-# ✅ Load YOLOv8 segmentation model (Using 'yolov8n-seg.pt' for better speed)
+# Load YOLOv8 segmentation model (Using 'yolov8n-seg.pt' for better speed)
 model = YOLO("yolov8n-seg.pt")
 
-# ✅ Move model to GPU if available
+# Move model to GPU if available
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 model.to(device)
 print(f"Using device: {device}")
@@ -56,17 +56,17 @@ try:
         # Convert color frame to BGR (YOLOv8 expects this)
         img = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
 
-        # ✅ FIX: Resize to (640, 640) for YOLOv8 compatibility
+        # Resize to (640, 640) for YOLOv8 compatibility
         img_resized = cv2.resize(img, (640, 640))
 
-        # ✅ Convert to tensor, reorder dimensions, normalize
+        # Convert to tensor, reorder dimensions, normalize
         img_tensor = torch.from_numpy(img_resized).permute(2, 0, 1).unsqueeze(0).float().to(device)
         img_tensor /= 255.0  # Normalize pixel values
 
-        # ✅ Perform YOLOv8 segmentation on GPU
+        # Perform YOLOv8 segmentation on GPU
         results = model.predict(img_tensor, conf=0.5)
 
-        # ✅ Scale factors to map YOLO output (640x640) back to RealSense frame (640x480)
+        # Scale factors to map YOLO output (640x640) back to RealSense frame (640x480)
         scale_x = 640 / 640  # Width remains the same
         scale_y = 480 / 640  # Height must be scaled down
 
@@ -83,7 +83,7 @@ try:
                 if mask is None or box is None:
                     continue
 
-                # ✅ Rescale mask coordinates to match 640x480 RealSense frame
+                # Rescale mask coordinates to match 640x480 RealSense frame
                 mask_rescaled = mask.copy()
                 mask_rescaled[:, 0] *= scale_x  # Scale X-coordinates
                 mask_rescaled[:, 1] *= scale_y  # Scale Y-coordinates
@@ -98,7 +98,7 @@ try:
                 # Draw segmentation mask (now properly aligned)
                 cv2.fillPoly(img, points, color)
 
-                # ✅ Rescale bounding box coordinates to match 640x480 RealSense frame
+                # Rescale bounding box coordinates to match 640x480 RealSense frame
                 x1, y1, x2, y2 = map(int, [
                     box.xyxy[0][0] * scale_x,
                     box.xyxy[0][1] * scale_y,
