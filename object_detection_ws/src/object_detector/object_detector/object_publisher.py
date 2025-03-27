@@ -8,6 +8,9 @@ import random
 import numpy as np
 import cv2
 from pathlib import Path
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+
 
 
 
@@ -54,7 +57,9 @@ class ObjectPublisher(Node):
         self.publisher_ = self.create_publisher(ObjectArray, 'detected_objects', 10)
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.i = 0
+        self.image_pub = self.create_publisher(Image, 'camera/image_raw', 10)
+        self.bridge = CvBridge()
+
 
 
 
@@ -69,6 +74,10 @@ class ObjectPublisher(Node):
 
         depth_image = np.asanyarray(depth_frame.get_data())
         color_image = np.asanyarray(color_frame.get_data())
+
+        #Preparing image to be publish in a topic
+        ros_image = self.bridge.cv2_to_imgmsg(color_image, encoding='bgr8')
+
         img = cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR)
         img_resized = cv2.resize(img, (640, 640))
 
@@ -119,7 +128,8 @@ class ObjectPublisher(Node):
                 obj.y = float(Y)
                 obj.z = float(Z)
                 msg.objects.append(obj)
-
+                
+        self.image_pub.publish(ros_image)
         self.publisher_.publish(msg)
         
     def destroy_node(self):

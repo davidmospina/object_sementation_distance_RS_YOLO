@@ -13,7 +13,7 @@ setup(
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/launch', ['launch/object_pipeline.launch.py']),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'opencv-python'],
     zip_safe=True,
     maintainer='david',
     maintainer_email='davidmospinae@gmail.com',
