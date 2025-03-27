@@ -5,8 +5,8 @@ import random
 import torch
 from ultralytics import YOLO
 
-# Load custom YOLOv8 model (detection only, no segmentation)
-model = YOLO("best.pt")
+# Load YOLOv8 segmentation model (Using 'yolov8n-seg.pt' for better speed)
+model = YOLO("yolov8n-seg.pt")
 
 # Move model to GPU if available
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -69,7 +69,7 @@ try:
         img_tensor = torch.from_numpy(img_resized).permute(2, 0, 1).unsqueeze(0).float().to(device)
         img_tensor /= 255.0  # Normalize pixel values
 
-        # Perform YOLOv8 detection on GPU
+        # Perform YOLOv8 segmentation on GPU
         results = model.predict(img_tensor, conf=0.5)
 
         # Scale factors to map YOLO output (640x640) back to RealSense frame (640x480)
@@ -78,15 +78,31 @@ try:
 
         # Process detected objects
         for result in results:
-            if result.boxes is None:
+            if result.masks is None or result.boxes is None: # Prevent NoneType errors
                 continue
 
+            masks = result.masks
             boxes = result.boxes
             names = result.names
 
-            for box in boxes:
-                if box is None:
+            for mask, box in zip(masks.xy, boxes):
+                if mask is None or box is None:
                     continue
+
+                # Rescale mask coordinates to match 640x480 RealSense frame
+                mask_rescaled = mask.copy()
+                mask_rescaled[:, 0] *= scale_x  # Scale X-coordinates
+                mask_rescaled[:, 1] *= scale_y  # Scale Y-coordinates
+
+                points = np.int32([mask_rescaled])  # Convert to integer points
+
+                # Get class information
+                class_id = int(box.cls[0])
+                class_name = names[class_id]
+                color = colors[classes_ids.index(class_id)]
+
+                # Draw segmentation mask (now properly aligned)
+                cv2.fillPoly(img, points, color)
 
                 # Rescale bounding box coordinates to match 640x480 RealSense frame
                 x1, y1, x2, y2 = map(int, [
@@ -98,24 +114,17 @@ try:
 
                 # Compute object center pixel coordinates
                 u, v = (x1 + x2) // 2, (y1 + y2) // 2
-
-                # Define small region around the center to compute depth (avoid outliers)
-                region_size = 5
-                roi = depth_image[max(0, v - region_size):min(480, v + region_size),
-                                  max(0, u - region_size):min(640, u + region_size)]
                 
-                # Flatten and remove invalid depths
-                valid_depths = roi[roi > 0].flatten()
-
-                if len(valid_depths) > 0:
-                    # Remove outliers using percentiles
-                    lower = np.percentile(valid_depths, 10)
-                    upper = np.percentile(valid_depths, 90)
-                    inlier_depths = valid_depths[(valid_depths >= lower) & (valid_depths <= upper)]
-                    Z = np.mean(inlier_depths) * depth_scale if len(inlier_depths) > 0 else 0
+                # Compute depth based on segmentation mask
+                mask_region = np.zeros_like(depth_image, dtype=np.uint8)
+                cv2.fillPoly(mask_region, [np.int32(mask)], 255)
+                object_depths = depth_image[mask_region == 255]
+                
+                if np.any(object_depths > 0):
+                    Z = np.mean(object_depths[object_depths > 0]) * depth_scale
                 else:
-                    Z = 0
-
+                    Z = 0  # No valid depth data
+                
                 # Compute real-world 3D coordinates
                 X = (u - cx) * Z / fx
                 Y = (v - cy) * Z / fy
@@ -130,7 +139,7 @@ try:
 
                 # Display class name, confidence, and 3D position
                 label = f"{class_name} {box.conf[0]:.2f} | X:{X:.2f}m Y:{Y:.2f}m Z:{Z:.2f}m"
-                cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, [0, 0, 0], 2)
+                cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, [0,0,0], 2)
 
         # Show results
         cv2.imshow('YOLOv8 + RealSense', img)

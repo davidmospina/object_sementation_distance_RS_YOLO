@@ -1,0 +1,26 @@
+# ROS 2 workspace build artifacts
+object_detection_ws/build/
+object_detection_ws/install/
+object_detection_ws/log/
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/*.so
+
+# Colcon/ROS clutter
+**/colcon_install_layout.*
+**/*.swp
+**/.DS_Store
+
+# Model weights and bags
+**/*.pt
+**/*.onnx
+**/*.bag
+**/*.db3
+
+# Editor configs
+.vscode/
+.idea/
