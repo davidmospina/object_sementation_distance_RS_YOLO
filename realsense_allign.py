@@ -32,6 +32,12 @@ print("Depth Scale is:", depth_scale)
 align_to = rs.stream.color
 align = rs.align(align_to)
 
+# Get camera intrinsics
+intrinsics = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+fx, fy = intrinsics.fx, intrinsics.fy
+cx, cy = intrinsics.ppx, intrinsics.ppy
+print("Camera Intrinsics:", fx, fy, cx, cy)
+
 # Generate random colors for each class
 yolo_classes = list(model.names.values())
 classes_ids = [yolo_classes.index(clas) for clas in yolo_classes]
@@ -72,7 +78,7 @@ try:
 
         # Process detected objects
         for result in results:
-            if result.masks is None or result.boxes is None:  # Prevent NoneType errors
+            if result.masks is None or result.boxes is None: # Prevent NoneType errors
                 continue
 
             masks = result.masks
@@ -106,22 +112,34 @@ try:
                     box.xyxy[0][3] * scale_y
                 ])
 
+                # Compute object center pixel coordinates
+                u, v = (x1 + x2) // 2, (y1 + y2) // 2
+                
                 # Compute depth based on segmentation mask
                 mask_region = np.zeros_like(depth_image, dtype=np.uint8)
-                cv2.fillPoly(mask_region, [np.int32(mask_rescaled)], 255)
+                cv2.fillPoly(mask_region, [np.int32(mask)], 255)
                 object_depths = depth_image[mask_region == 255]
                 
-                if np.any(object_depths > 0):  # Use segmentation mask if valid depths exist
-                    distance = np.mean(object_depths[object_depths > 0]) * depth_scale
+                if np.any(object_depths > 0):
+                    Z = np.mean(object_depths[object_depths > 0]) * depth_scale
                 else:
-                    distance = 0  # No valid depth data
+                    Z = 0  # No valid depth data
+                
+                # Compute real-world 3D coordinates
+                X = (u - cx) * Z / fx
+                Y = (v - cy) * Z / fy
+
+                # Get class information
+                class_id = int(box.cls[0])
+                class_name = names[class_id]
+                color = colors[classes_ids.index(class_id)]
 
                 # Draw bounding box
                 cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
 
-                # Display class name + confidence + distance
-                label = f"{class_name} {box.conf[0]:.2f} | {distance:.2f}m"
-                cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                # Display class name, confidence, and 3D position
+                label = f"{class_name} {box.conf[0]:.2f} | X:{X:.2f}m Y:{Y:.2f}m Z:{Z:.2f}m"
+                cv2.putText(img, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, [0,0,0], 2)
 
         # Show results
         cv2.imshow('YOLOv8 + RealSense', img)
