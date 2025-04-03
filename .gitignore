@@ -24,3 +24,8 @@ object_detection_ws/log/
 # Editor configs
 .vscode/
 .idea/
+
+
+#data set folders
+Hospital_Scene_Data-main/
+example_outputs/
