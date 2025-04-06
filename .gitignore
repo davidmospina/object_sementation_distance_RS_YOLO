@@ -32,3 +32,8 @@ example_outputs/
 payload_raw_pictures/
 payload_dataset/
 resized_images_640x640/
+
+
+# Ignore TF visualization outputs
+frames_*.gv
+frames_*.pdf
