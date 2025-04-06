@@ -1,0 +1,57 @@
+sofa
+chair
+foot board
+overbed table
+hospital bed
+staff
+door handle
+table
+bedside monitor
+iv pole
+surgical light
+breathing tube
+wheel chair
+patient
+drawer
+mouse
+computer
+bedrail
+curtain
+keyboard
+infusion pump
+ventilator
+utility cart
+panda baby warmer
+visitor
+dispenser
+medical drawer
+handle
+countertop
+cabinet
+waste_bin
+faucet
+TV
+telephone
+syringe pump
+light switch
+elevator panel
+counter
+medical waste container
+push latch
+operating bed
+electrosurgical unit
+sink
+restroom assist bar
+incubator
+exam table
+bedside table
+hallway assist bar
+sequential compression
+toilet
+toilet handle
+person
+press to open
+surgical instrument
+xray machine
+xray bed
+payload
