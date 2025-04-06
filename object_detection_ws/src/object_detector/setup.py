@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'object_publisher = object_detector.object_publisher:main',
             'object_subscriber = object_detector.object_subscriber:main',
+            'static_tf_broadcaster = object_detector.static_tf_broadcaster:main',
         ],
     },
 )
