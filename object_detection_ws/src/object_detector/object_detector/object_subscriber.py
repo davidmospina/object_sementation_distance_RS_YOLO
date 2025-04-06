@@ -1,55 +1,85 @@
-# Copyright 2016 Open Source Robotics Foundation, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import rclpy
 from rclpy.node import Node
-from object_msgs.msg import Object, ObjectArray
-from std_msgs.msg import String
-
+from object_msgs.msg import ObjectArray
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
+import cv2
 
 class ObjectSubscriber(Node):
-
     def __init__(self):
         super().__init__('object_subscriber')
-        self.subscription = self.create_subscription(
+
+        self.bridge = CvBridge()
+        self.image = None
+        self.objects = []
+
+        self.image_sub = self.create_subscription(
+            Image,
+            'camera/image_raw',
+            self.image_callback,
+            10
+        )
+
+        self.objects_sub = self.create_subscription(
             ObjectArray,
             'detected_objects',
-            self.listener_callback,
-            10)
-        self.subscription  # prevent unused variable warning
+            self.objects_callback,
+            10
+        )
 
-    def listener_callback(self, msg):
-        for obj in msg.objects:
-            self.get_logger().info(
-                f"Detected {obj.class_name} | Confidence: {obj.confidence:.2f} | X:{obj.x:.2f} Y:{obj.y:.2f} Z:{obj.z:.2f}"
-            )
+        self.timer = self.create_timer(0.1, self.visualize_callback)
+
+    def image_callback(self, msg):
+        self.image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
+
+    def objects_callback(self, msg):
+        self.objects = msg.objects
+
+    def visualize_callback(self):
+        if self.image is None:
+            return
+
+        img = self.image.copy()
+
+        for obj in self.objects:
+
+            x, y, z = obj.x, obj.y, obj.z
+
+            # fx = 378.39862060546875
+            # fy = 378.03509521484375
+            # cx = 321.93994140625
+            # cy = 243.1790313720703
 
 
+            #small camera:
+            fx = 616.7725830078125
+            fy = 616.8902587890625
+            cx = 319.1792297363281
+            cy = 251.24098205566406
+            
+
+            u = int((x * fx / z) + cx)
+            v = int((y * fy / z) + cy)
+
+           
+
+            cv2.circle(img, (u, v), 5, (0, 255, 0), -1)
+            label = f"{obj.class_name} {obj.confidence:.2f} ({x:.2f},{y:.2f},{z:.2f})"
+            cv2.putText(img, label, (u, v - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+
+        cv2.imshow("Detected Objects", img)
+        cv2.waitKey(1)
 
 def main(args=None):
     rclpy.init(args=args)
-
-    object_subscriber = ObjectSubscriber()
-
-    rclpy.spin(object_subscriber)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    object_subscriber.destroy_node()
+    node = ObjectSubscriber()
+    try:
+        rclpy.spin(node)
+    except KeyboardInterrupt:
+        pass
+    cv2.destroyAllWindows()
+    node.destroy_node()
     rclpy.shutdown()
-
 
 if __name__ == '__main__':
     main()

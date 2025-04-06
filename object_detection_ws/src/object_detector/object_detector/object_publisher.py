@@ -10,18 +10,14 @@ import cv2
 from pathlib import Path
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-
-
-
-
-
+from geometry_msgs.msg import PointStamped
 
 class ObjectPublisher(Node):
 
     def __init__(self):
         super().__init__('object_publisher')
         
-
+        self.point_pub = self.create_publisher(PointStamped, 'detected_points', 10)
         # Load YOLOv8 model
         MODEL_PATH = str(Path(__file__).parent / "best.pt")
         self.model = YOLO(MODEL_PATH)
@@ -45,11 +41,13 @@ class ObjectPublisher(Node):
         intrinsics = self.profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
         self.fx, self.fy = intrinsics.fx, intrinsics.fy
         self.cx, self.cy = intrinsics.ppx, intrinsics.ppy
+        self.get_logger().info(f"fx: {self.fx}, fy : {self.fy}, cx: {self.cx}, cy: {self.cy}.")
+
 
         
         #Fetch classes from the model and assign boundinbox colors
         self.yolo_classes = list(self.model.names.values())
-        self.get_logger().info(f"Classes: {self.yolo_classes}")
+        # self.get_logger().info(f"Classes: {self.yolo_classes}")
         self.classes_ids = [self.yolo_classes.index(clas) for clas in self.yolo_classes]
         self.colors = [random.choices(range(256), k=3) for _ in self.classes_ids]
 
@@ -115,7 +113,8 @@ class ObjectPublisher(Node):
                     inlier_depths = valid_depths[(valid_depths >= lower) & (valid_depths <= upper)]
                     Z = np.mean(inlier_depths) * self.depth_scale if len(inlier_depths) > 0 else 0
                 else:
-                    Z = 0
+                    continue
+
 
                 X = (u - self.cx) * Z / self.fx
                 Y = (v - self.cy) * Z / self.fy
@@ -127,7 +126,16 @@ class ObjectPublisher(Node):
                 obj.x = float(X)
                 obj.y = float(Y)
                 obj.z = float(Z)
+
                 msg.objects.append(obj)
+
+                point_msg = PointStamped()
+                point_msg.header.stamp = self.get_clock().now().to_msg()
+                point_msg.header.frame_id = "camera_link"
+                point_msg.point.x = X
+                point_msg.point.y = Y
+                point_msg.point.z = Z
+                self.point_pub.publish(point_msg)
                 
         self.image_pub.publish(ros_image)
         self.publisher_.publish(msg)

@@ -24,3 +24,11 @@ object_detection_ws/log/
 # Editor configs
 .vscode/
 .idea/
+
+
+#data set folders
+Hospital_Scene_Data-main/
+example_outputs/
+payload_raw_pictures/
+payload_dataset/
+resized_images_640x640/
