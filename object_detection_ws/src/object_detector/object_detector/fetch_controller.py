@@ -3,13 +3,14 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
+import tf2_ros
+from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose
 
 class FetchController(Node):
 
     def __init__(self):
         super().__init__('fetch_controller')
 
-        # Subscribe to the transformed payload pose
         self.subscription = self.create_subscription(
             PoseStamped,
             '/payload_pose',
@@ -17,28 +18,42 @@ class FetchController(Node):
             10
         )
 
-        # Nav2 goal action client
         self.action_client = ActionClient(self, NavigateToPose, 'navigate_to_pose')
+        self.tf_buffer = tf2_ros.Buffer()
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer, self)
 
-        # Initially, fetch mode is OFF
-        self.fetch_mode = True  # You can start as False and toggle later
+        self.fetch_mode = True  # You can toggle this later
 
     def pose_callback(self, msg: PoseStamped):
         if not self.fetch_mode:
             self.get_logger().info("Fetch mode off. Ignoring payload.")
             return
 
-        self.get_logger().info(f"Payload detected at ({msg.pose.position.x:.2f}, {msg.pose.position.y:.2f})")
-        self.send_goal_to_nav2(msg)
+        try:
+            # Transform pose to map frame
+            transform = self.tf_buffer.lookup_transform(
+                'map',  # Target frame
+                msg.header.frame_id,  # Source frame (camera_link or base_link)
+                rclpy.time.Time()
+            )
+            transformed_pose = do_transform_pose(msg, transform)
+            transformed_pose.header.frame_id = 'map'
+            self.get_logger().info(
+                f"Transformed pose: ({transformed_pose.pose.position.x:.2f}, {transformed_pose.pose.position.y:.2f})"
+            )
+            self.send_goal_to_nav2(transformed_pose)
+
+        except Exception as e:
+            self.get_logger().warn(f"Transform failed: {e}")
 
     def send_goal_to_nav2(self, pose: PoseStamped):
         goal_msg = NavigateToPose.Goal()
         goal_msg.pose = pose
 
-        # Wait for the action server
+        self.get_logger().info("Waiting for Nav2 action server...")
         self.action_client.wait_for_server()
+        self.get_logger().info("Sending goal...")
 
-        # Send goal asynchronously
         send_goal_future = self.action_client.send_goal_async(goal_msg)
         send_goal_future.add_done_callback(self.goal_response_callback)
 
@@ -55,7 +70,6 @@ class FetchController(Node):
     def navigation_result_callback(self, future):
         result = future.result().result
         self.get_logger().info(f"Navigation completed with status: {result}")
-        # Optional: toggle fetch_mode off here
 
 def main(args=None):
     rclpy.init(args=args)
