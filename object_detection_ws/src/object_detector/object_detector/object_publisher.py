@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from object_msgs.msg import Object, ObjectArray
+from geometry_msgs.msg import PoseStamped
 import torch
 import pyrealsense2 as rs
 from ultralytics import YOLO
@@ -53,7 +53,7 @@ class ObjectPublisher(Node):
         self.colors = [random.choices(range(256), k=3) for _ in self.classes_ids]
 
 
-        self.publisher_ = self.create_publisher(ObjectArray, 'detected_objects', 10)
+        self.payload_pub = self.create_publisher(PoseStamped, 'payload_pose', 10)
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.i = 0
@@ -80,8 +80,7 @@ class ObjectPublisher(Node):
         results = self.model.predict(img_tensor, conf=0.5)
         scale_x = 640 / 640
         scale_y = 480 / 640
-
-        msg = ObjectArray()
+        
         for result in results:
             if result.boxes is None:
                 continue
@@ -89,17 +88,22 @@ class ObjectPublisher(Node):
             names = result.names
 
             for box in boxes:
+                class_id = int(box.cls[0])
+                class_name = names[class_id]
+                if class_name != "payload":
+                    continue  # Only publish "payload"
+
                 x1, y1, x2, y2 = map(int, [
-                    box.xyxy[0][0] * scale_x,
-                    box.xyxy[0][1] * scale_y,
-                    box.xyxy[0][2] * scale_x,
-                    box.xyxy[0][3] * scale_y
+                    box.xyxy[0][0],
+                    box.xyxy[0][1],
+                    box.xyxy[0][2],
+                    box.xyxy[0][3]
                 ])
 
                 u, v = (x1 + x2) // 2, (y1 + y2) // 2
                 region_size = 5
                 roi = depth_image[max(0, v - region_size):min(480, v + region_size),
-                                  max(0, u - region_size):min(640, u + region_size)]
+                                max(0, u - region_size):min(640, u + region_size)]
                 valid_depths = roi[roi > 0].flatten()
 
                 if len(valid_depths) > 0:
@@ -113,16 +117,16 @@ class ObjectPublisher(Node):
                 X = (u - self.cx) * Z / self.fx
                 Y = (v - self.cy) * Z / self.fy
 
-                class_id = int(box.cls[0])
-                obj = Object()
-                obj.class_name = names[class_id]
-                obj.confidence = float(box.conf[0])
-                obj.x = float(X)
-                obj.y = float(Y)
-                obj.z = float(Z)
-                msg.objects.append(obj)
+                pose_msg = PoseStamped()
+                pose_msg.header.stamp = self.get_clock().now().to_msg()
+                pose_msg.header.frame_id = "camera_link"  # Replace with your actual frame
+                pose_msg.pose.position.x = float(X)
+                pose_msg.pose.position.y = float(Y)
+                pose_msg.pose.position.z = float(Z)
+                pose_msg.pose.orientation.w = 1.0
 
-        self.publisher_.publish(msg)
+                self.payload_pub.publish(pose_msg)
+
         
     def destroy_node(self):
         self.pipeline.stop()
