@@ -2,7 +2,7 @@ import os
 from PIL import Image
 
 # Input and output paths
-input_folder = "./payload_raw_pictures"
+input_folder = "./hugo_raw_pictures"
 output_folder = "./resized_images_640x640"
 
 # Create output folder if it doesn't exist

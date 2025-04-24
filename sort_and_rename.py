@@ -3,12 +3,26 @@ import shutil
 import random
 from PIL import Image
 
+# Dataset structure for yolo models
+
+# ├── Hospital_Scene_Data-main
+# │   ├── data.yaml
+# │   ├── images
+# │   ├── labels
+# │   ├── readme
+# │   └── README.md
+
+# 1) Update the data.yaml with the new classes, at the bottom of the array, and increase the nc (number of classes) to the new value.
+
+# 2) label the new images, copy the label in the same orde in a txt and use the https://www.makesense.ai/ webtool for labeling
+
+# 3) run the script on the new anotated images folder
+
 # ------------------ CONFIGURATION ------------------
-source_folder = "./resized_images_640x640"  # Folder containing IMG_####.JPEG and TXT
-output_base = "./payload_dataset"  # Root dataset folder
-start_index = 4428  # Starting image index
-image_size = (640, 640)  # Resize target
-split_ratio = [0.8, 0.1, 0.1]  # Train, Val, Test
+source_folder = "./labeled_images"  # Folder containing IMG_####.JPEG and TXT
+output_base = "./hugo_dataset"      # Root dataset folder
+start_index = 4529                  # Starting image index
+split_ratio = [0.8, 0.1, 0.1]       # Train, Val, Test
 
 # Destination folders
 image_dest = {
@@ -43,7 +57,7 @@ splits = {
     "test": image_files[val_split:]
 }
 
-# Rename, resize, and copy files
+# Rename and copy files
 current_index = start_index
 
 for split_name, files in splits.items():
@@ -58,10 +72,9 @@ for split_name, files in splits.items():
         new_img_name = new_basename + ".jpg"
         new_label_name = new_basename + ".txt"
 
-        # Resize and save image
+        # Convert and save image without resizing
         img = Image.open(img_path).convert("RGB")
-        img_resized = img.resize(image_size, Image.LANCZOS)
-        img_resized.save(os.path.join(image_dest[split_name], new_img_name))
+        img.save(os.path.join(image_dest[split_name], new_img_name))
 
         # Copy label file
         if os.path.exists(label_path):
@@ -71,4 +84,10 @@ for split_name, files in splits.items():
 
         current_index += 1
 
-print("✅ Dataset updated and merged with proper formatting and splitting!")
+print("Dataset updated and merged with proper formatting and splitting!")
+
+
+
+#4 Add the new images and labels to the data set folders
+
+#5 use the jupyter notebook to train the new model 

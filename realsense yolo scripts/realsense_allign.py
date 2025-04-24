@@ -7,7 +7,7 @@ from ultralytics import YOLO
 
 # Load custom YOLOv8 model (detection only, no segmentation)
 # model = YOLO("../best.pt")
-model = YOLO("../payload_model.pt")
+model = YOLO("../payload_hugo_model.pt")
 
 # Move model to GPU if available
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
