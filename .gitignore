@@ -30,5 +30,7 @@ object_detection_ws/log/
 Hospital_Scene_Data-main/
 example_outputs/
 payload_raw_pictures/
+hugo_raw_pictures/
 payload_dataset/
+hugo_dataset/
 resized_images_640x640/
