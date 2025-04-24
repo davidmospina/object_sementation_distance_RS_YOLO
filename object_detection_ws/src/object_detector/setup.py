@@ -6,7 +6,7 @@ setup(
     name=package_name,
     version='0.0.0',
     packages=find_packages(exclude=['test']),
-    package_data={'object_detector': ['best.pt']},
+    package_data={'object_detector': ['payload_model.pt']},
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'object_publisher = object_detector.object_publisher:main',
             'object_subscriber = object_detector.object_subscriber:main',
+            'fetch_controller = object_detector.fetch_controller:main',
         ],
     },
 )
