@@ -8,6 +8,8 @@ import random
 import numpy as np
 import cv2
 from pathlib import Path
+import logging
+logging.getLogger('ultralytics').setLevel(logging.WARNING)
 
 
 
@@ -20,7 +22,7 @@ class ObjectPublisher(Node):
         
 
         # Load YOLOv8 model
-        MODEL_PATH = str(Path(__file__).parent / "best.pt")
+        MODEL_PATH = str(Path(__file__).parent / "payload_model.pt")
         self.model = YOLO(MODEL_PATH)
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.model.to(self.device)
