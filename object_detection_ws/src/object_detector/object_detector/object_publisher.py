@@ -9,6 +9,7 @@ import numpy as np
 import cv2
 from pathlib import Path
 import logging
+import sys
 logging.getLogger('ultralytics').setLevel(logging.WARNING)
 
 
@@ -24,9 +25,20 @@ class ObjectPublisher(Node):
         # Load YOLOv8 model
         MODEL_PATH = str(Path(__file__).parent / "payload_model.pt")
         self.model = YOLO(MODEL_PATH)
-        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.model.to(self.device)
-        self.get_logger().info(f"Using device: {self.device}")
+
+        try:
+            if not torch.cuda.is_available():
+                raise RuntimeError("CUDA is not available. Exiting program.")
+            self.device = 'cuda'
+            self.model.to(self.device)
+            self.get_logger().info(f"Using device: {self.device}")
+
+        except Exception as e:
+            self.get_logger().info(f"Error: {e}")
+            sys.exit(1)
+
+        # self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # self.model.to(self.device)
 
         # Setup RealSense pipeline
         self.pipeline = rs.pipeline()

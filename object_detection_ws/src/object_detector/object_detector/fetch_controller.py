@@ -3,7 +3,7 @@ from rclpy.node import Node
 from rclpy.action import ActionClient
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
-from rclpy.action import GoalStatus
+from action_msgs.msg import GoalStatus
 import tf2_ros
 from std_srvs.srv import SetBool
 from tf2_geometry_msgs.tf2_geometry_msgs import do_transform_pose
