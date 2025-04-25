@@ -21,4 +21,10 @@ def generate_launch_description():
             name='camera_static_tf',
             arguments=['0.1', '0.0', '0.2', '0', '0', '0', '1', 'base_link', 'camera_link']
         ),
+        Node(
+            package='object_detector', 
+            executable='fetch_controller',
+            name='fetch_controller',
+            output='screen'
+        )
     ])
